@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { 
   Search, 
   Bell, 
   ChevronDown, 
-  Users,
   SlidersHorizontal,
-  Zap
+  Zap,
+  LogOut
 } from 'lucide-react'
 
 // Components
@@ -25,11 +27,30 @@ import { getDashboard } from '../services/dashboardApi'
 import { getOpportunities, extractOpportunity, uploadPosterImage } from '../services/opportunityApi'
 
 const DashboardPage = () => {
-  const [activeCategory, setActiveCategory] = useState('Internships')
+  const navigate = useNavigate()
+  const { logout, user } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
+  const [activeCategory, setActiveCategory] = useState('All')
   const [opportunities, setOpportunities] = useState([])
   const [stats, setStats] = useState(null)
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const filteredOpportunities = activeCategory === 'All'
+    ? opportunities
+    : opportunities.filter((o) => {
+        const key = activeCategory.toLowerCase().slice(0, -1)
+        return (
+          (o.domain || '').toLowerCase().includes(key) ||
+          (o.role || '').toLowerCase().includes(key) ||
+          (o.title || '').toLowerCase().includes(key)
+        )
+      })
 
   useEffect(() => {
     fetchDashboardData()
@@ -55,21 +76,13 @@ const DashboardPage = () => {
 
   const handleExtractWithAI = async (message) => {
     if (!message) return
-    try {
-      await extractOpportunity(message)
-      await fetchDashboardData()
-    } catch (e) {
-      console.error('Extraction failed:', e)
-    }
+    await extractOpportunity(message)
+    await fetchDashboardData()
   }
 
   const handleImageUpload = async (file) => {
-    try {
-      await uploadPosterImage(file)
-      await fetchDashboardData()
-    } catch (e) {
-      console.error('Image upload failed:', e)
-    }
+    await uploadPosterImage(file)
+    await fetchDashboardData()
   }
 
   return (
@@ -92,20 +105,26 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-5">
-           <button className="p-2.5 text-slate-500 hover:bg-slate-50 rounded-full transition-colors relative">
-            <Bell size={20} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-          </button>
-          <div className="flex items-center gap-3 pl-2 group cursor-pointer">
-            <img 
-              src="https://framerusercontent.com/images/R94Z9N9M4oM4Y8pP7n5Z3zY.jpg" 
-              className="w-9 h-9 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-blue-400 transition-all" 
-              alt="Profile"
-            />
-            <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600" />
+          <div className="flex items-center gap-4">
+            <button className="p-2.5 text-slate-500 hover:bg-slate-50 rounded-full transition-colors relative">
+              <Bell size={20} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+            </button>
+            <div className="flex items-center gap-3 pl-2">
+              <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm ring-2 ring-slate-100">
+                {user?.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <span className="text-sm font-semibold text-slate-700 hidden md:block">{user?.name || 'User'}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              title="Logout"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 font-semibold text-sm transition-all"
+            >
+              <LogOut size={16} />
+              <span className="hidden md:inline">Logout</span>
+            </button>
           </div>
-        </div>
       </nav>
 
       {/* Main Content Area */}
@@ -127,12 +146,13 @@ const DashboardPage = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <OpportunityFeed opportunities={opportunities} />
+            <OpportunityFeed opportunities={filteredOpportunities} loading={loading} />
           </motion.div>
 
-          <CategoryFilters 
-            activeCategory={activeCategory} 
-            onCategoryChange={setActiveCategory} 
+          <CategoryFilters
+            activeCategory={activeCategory}
+            onCategoryChange={setActiveCategory}
+            opportunities={opportunities}
           />
 
           <QuickAddOpportunity 
@@ -148,9 +168,9 @@ const DashboardPage = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <NotificationsPanel />
+            <NotificationsPanel opportunities={opportunities} />
             <DeadlineTracker deadlines={upcomingDeadlines} />
-            <AdvancedStats />
+            <AdvancedStats opportunities={opportunities} stats={stats} />
             <RecommendationPanel />
           </motion.div>
         </aside>

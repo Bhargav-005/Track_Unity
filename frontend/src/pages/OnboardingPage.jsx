@@ -212,25 +212,18 @@ const OnboardingPage = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-8 text-center"
               >
-                <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-8 text-blue-400 border border-blue-500/30">
+                <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto text-green-400 border border-green-500/30">
                   <Rocket size={40} className="animate-bounce" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold font-outfit mb-2">Connect your channels</h2>
-                  <p className="text-gray-400 text-lg">Sync Telegram or Discord to start extracting opportunities automatically.</p>
+                  <h2 className="text-3xl font-bold font-outfit mb-2">You're all set!</h2>
+                  <p className="text-gray-400 text-lg">Click <strong className="text-white">Get Started</strong> to create your account and go to your dashboard.</p>
                 </div>
-
-                <div className="space-y-4 max-w-sm mx-auto">
-                  <button className="w-full py-4 rounded-2xl bg-[#5865F2] hover:opacity-90 transition-all font-bold flex items-center justify-center gap-3">
-                    Connect Discord
-                  </button>
-                  <button className="w-full py-4 rounded-2xl bg-[#0088CC] hover:opacity-90 transition-all font-bold flex items-center justify-center gap-3">
-                    Connect Telegram
-                  </button>
-                  <button className="w-full py-4 rounded-2xl glass border border-white/10 hover:bg-white/10 transition-all text-sm font-medium">
-                    Skip for now
-                  </button>
-                </div>
+                <ul className="text-left max-w-xs mx-auto space-y-3 text-sm text-gray-400">
+                  <li className="flex items-center gap-3"><span className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-xs">✓</span> Profile info saved</li>
+                  <li className="flex items-center gap-3"><span className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-xs">✓</span> Interests selected ({selectedInterests.length || 0})</li>
+                  <li className="flex items-center gap-3"><span className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-xs">✓</span> Ready to track opportunities</li>
+                </ul>
               </motion.div>
             )}
           </AnimatePresence>

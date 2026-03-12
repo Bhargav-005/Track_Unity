@@ -1,12 +1,18 @@
 import React from 'react';
 import { Maximize2, ChevronDown } from 'lucide-react';
 
-const AdvancedStats = () => {
-  const stats = [
-    { label: 'Applied Opportunities', value: 12 },
-    { label: 'Saved Opportunities', value: 20 },
-    { label: 'Upcoming Deadlines', value: 8 },
-    { label: 'Expired Opportunities', value: 3 },
+const now = () => new Date();
+
+const AdvancedStats = ({ opportunities = [], stats = {} }) => {
+  const expired = opportunities.filter(
+    (o) => o.deadline && new Date(o.deadline) < now()
+  ).length;
+
+  const rows = [
+    { label: 'Total Opportunities', value: stats.total ?? opportunities.length },
+    { label: 'Upcoming Deadlines', value: stats.upcoming ?? 0 },
+    { label: 'Applied', value: stats.applied ?? 0 },
+    { label: 'Expired', value: expired },
   ];
 
   return (
@@ -20,8 +26,8 @@ const AdvancedStats = () => {
       </div>
       <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest px-1 font-inter">Your Opportunity Activity</p>
       <div className="space-y-4 px-1">
-        {stats.map((s, i) => (
-          <div key={i} className="flex justify-between items-center group cursor-pointer">
+        {rows.map((s) => (
+          <div key={s.label} className="flex justify-between items-center group cursor-pointer">
             <span className="text-[13px] font-semibold text-slate-500 group-hover:text-slate-800 transition-colors tracking-tight font-inter">{s.label}</span>
             <span className="text-[14px] font-bold text-slate-900 leading-none font-outfit">{s.value}</span>
           </div>
