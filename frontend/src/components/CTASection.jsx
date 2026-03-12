@@ -34,7 +34,7 @@ const CTASection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link to="/onboarding" className="btn-primary py-4 px-10 text-lg w-full sm:w-auto">
+            <Link to="/register" className="btn-primary py-4 px-10 text-lg w-full sm:w-auto">
               Create Account
               <ArrowRight size={20} />
             </Link>

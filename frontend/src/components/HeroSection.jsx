@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Send, Bell, ListTodo } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 const HeroSection = () => {
   return (
@@ -32,10 +33,10 @@ const HeroSection = () => {
             Convert chaotic opportunity messages from Telegram, Discord, and Email into structured opportunities using AI.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
-            <button className="btn-primary py-4 px-8 text-lg">
+            <Link to="/register" className="btn-primary py-4 px-8 text-lg">
               Get Started
               <ArrowRight size={20} />
-            </button>
+            </Link>
             <button className="btn-secondary py-4 px-8 text-lg">
               Learn More
             </button>

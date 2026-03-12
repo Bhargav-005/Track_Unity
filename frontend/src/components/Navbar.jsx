@@ -56,7 +56,7 @@ const Navbar = () => {
           >
             Login
           </Link>
-          <Link to="/onboarding" className="btn-primary py-2 px-5 text-sm">
+          <Link to="/register" className="btn-primary py-2 px-5 text-sm">
             Get Started
             <ArrowRight size={16} />
           </Link>
@@ -96,7 +96,7 @@ const Navbar = () => {
             Login
           </Link>
           <Link 
-            to="/onboarding" 
+            to="/register" 
             className="btn-primary w-full"
             onClick={() => setIsMobileMenuOpen(false)}
           >
