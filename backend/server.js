@@ -6,12 +6,15 @@ const path = require('path');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 const { initializeTelegramBot } = require('./services/telegramBotService');
+const { startReminderCron } = require('./services/reminderService');
+const { startEmailPollingCron } = require('./services/emailParser');
 
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const opportunityRoutes = require('./routes/opportunityRoutes');
 const ingestionRoutes = require('./routes/ingestionRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
 
 const app = express();
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -38,6 +41,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/ingest', ingestionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 
 // Health check
 app.get('/', (req, res) => {
@@ -51,4 +55,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   initializeTelegramBot();
+  startReminderCron();
+  startEmailPollingCron();
 });

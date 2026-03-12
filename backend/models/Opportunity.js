@@ -16,7 +16,14 @@ const opportunitySchema = new mongoose.Schema(
     domain: { type: String, trim: true },
     eligibility: { type: String, trim: true },
     deadline: { type: Date },
+    skills: [{ type: String, trim: true }],
     applicationLink: { type: String, trim: true },
+    linkStatus: {
+      type: String,
+      enum: ['valid', 'suspicious', 'broken'],
+      default: 'broken',
+    },
+    confidenceScore: { type: Number, default: 0 },
     description: { type: String, trim: true },
     sourceMessageId: {
       type: mongoose.Schema.Types.ObjectId,

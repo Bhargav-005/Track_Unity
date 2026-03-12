@@ -2,7 +2,9 @@ const fs = require('fs');
 const Opportunity = require('../models/Opportunity');
 const RawMessage = require('../models/RawMessage');
 const { extractTextFromImage } = require('../services/ocrService');
-const { parseOpportunityMessage } = require('../services/nlpParserService');
+const { extractOpportunityWithNlp } = require('../services/nlpClientService');
+const { validateOpportunityLink } = require('../services/linkValidator');
+const { updateRecommendationsForOpportunity } = require('../services/recommendationService');
 const {
   normalizeTelegramWebhookPayload,
   isTelegramWebhookAuthorized,
@@ -17,7 +19,9 @@ const persistParsedOpportunity = async ({ source, messageText, imageUrl = null, 
     processed: false,
   });
 
-  const parsed = parseOpportunityMessage(messageText);
+  const parsed = await extractOpportunityWithNlp(messageText);
+  const linkResult = await validateOpportunityLink(parsed.applicationLink);
+
   const normalizedCompany = parsed.company || 'Unknown Company';
   const normalizedTitle = parsed.title && parsed.title !== 'Opportunity'
     ? parsed.title
@@ -27,16 +31,20 @@ const persistParsedOpportunity = async ({ source, messageText, imageUrl = null, 
     title: normalizedTitle,
     company: normalizedCompany,
     role: parsed.role,
-    domain: parsed.domain,
     eligibility: parsed.eligibility,
-    deadline: parsed.deadline,
-    applicationLink: parsed.applicationLink,
+    deadline: parsed.deadline ? new Date(parsed.deadline) : null,
+    skills: parsed.skills || [],
+    applicationLink: linkResult.normalizedUrl || parsed.applicationLink,
+    linkStatus: linkResult.linkStatus,
+    confidenceScore: parsed.confidenceScore || 0,
     description: parsed.description,
     sourceMessageId: rawMessage._id,
   });
 
   rawMessage.processed = true;
   await rawMessage.save();
+
+  await updateRecommendationsForOpportunity(opportunity);
 
   return { rawMessage, parsed, opportunity };
 };

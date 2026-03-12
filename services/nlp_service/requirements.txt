@@ -1,0 +1,8 @@
+fastapi>=0.116.1
+uvicorn[standard]>=0.35.0
+spacy>=3.8.10
+sentence-transformers>=3.0.1
+scikit-learn>=1.5.1
+validators>=0.34.0
+beautifulsoup4>=4.12.3
+requests>=2.32.3
