@@ -1,18 +1,58 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, ArrowLeft, CheckCircle2, User, Mail, Sparkles, Rocket } from 'lucide-react'
+import { ArrowRight, ArrowLeft, CheckCircle2, Rocket, Loader2 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { registerUser } from '../services/authApi'
+import { submitOnboarding } from '../services/profileApi'
+import { useAuth } from '../context/AuthContext'
+
+const INTERESTS = ['Web Dev', 'AI/ML', 'Cloud', 'Cybersecurity', 'FinTech', 'Data Science']
 
 const OnboardingPage = () => {
   const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const navigate = useNavigate()
+  const { login } = useAuth()
 
-  const nextStep = () => setStep(prev => Math.min(prev + 1, 3))
-  const prevStep = () => setStep(prev => Math.max(prev - 1, 1))
+  // Step 1 fields
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [university, setUniversity] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
-  const handleComplete = () => {
-    // Navigate to dashboard
-    navigate('/dashboard')
+  // Step 2 fields
+  const [selectedInterests, setSelectedInterests] = useState([])
+
+  const toggleInterest = (interest) => {
+    setSelectedInterests(prev =>
+      prev.includes(interest) ? prev.filter(i => i !== interest) : [...prev, interest]
+    )
+  }
+
+  const nextStep = () => { setError(''); setStep(prev => Math.min(prev + 1, 3)) }
+  const prevStep = () => { setError(''); setStep(prev => Math.max(prev - 1, 1)) }
+
+  const handleComplete = async () => {
+    setError('')
+    try {
+      setLoading(true)
+      const name = `${firstName} ${lastName}`.trim() || 'New User'
+      const authData = await registerUser({ name, email, password })
+      login(authData.token, authData.user)
+      await submitOnboarding({
+        userType: 'student',
+        skills: selectedInterests,
+        education: university ? [{ university }] : [],
+        onboardingCompleted: true,
+      })
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -74,24 +114,52 @@ const OnboardingPage = () => {
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-400 ml-1">First Name</label>
-                      <input 
+                      <input
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-700"
                         placeholder="John"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-400 ml-1">Last Name</label>
-                      <input 
+                      <input
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-700"
                         placeholder="Doe"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-400 ml-1">Work/Education</label>
-                    <input 
+                    <label className="text-sm font-medium text-gray-400 ml-1">University / Workplace</label>
+                    <input
+                      value={university}
+                      onChange={(e) => setUniversity(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-700"
                       placeholder="University of Tech"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-400 ml-1">Email Address</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-700"
+                      placeholder="name@example.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-400 ml-1">Password</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-700"
+                      placeholder="Minimum 6 characters"
                     />
                   </div>
                 </div>
@@ -112,17 +180,26 @@ const OnboardingPage = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {['Web Dev', 'AI/ML', 'Cloud', 'Cybersecurity', 'FinTech', 'Data Science'].map((interest) => (
-                    <button 
-                      key={interest}
-                      className="p-4 rounded-2xl glass border border-white/5 hover:border-blue-500/40 text-left transition-all group"
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium group-hover:text-blue-400">{interest}</span>
-                        <div className="w-5 h-5 rounded-full border border-gray-600 transition-colors group-hover:border-blue-500"></div>
-                      </div>
-                    </button>
-                  ))}
+                  {INTERESTS.map((interest) => {
+                    const selected = selectedInterests.includes(interest)
+                    return (
+                      <button
+                        key={interest}
+                        type="button"
+                        onClick={() => toggleInterest(interest)}
+                        className={`p-4 rounded-2xl glass border text-left transition-all group ${
+                          selected ? 'border-blue-500 bg-blue-500/10 text-blue-300' : 'border-white/5 hover:border-blue-500/40'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{interest}</span>
+                          <div className={`w-5 h-5 rounded-full border-2 transition-colors ${
+                            selected ? 'bg-blue-500 border-blue-500' : 'border-gray-600'
+                          }`}></div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </motion.div>
             )}
@@ -158,10 +235,17 @@ const OnboardingPage = () => {
             )}
           </AnimatePresence>
 
+          {/* Error Banner */}
+          {error && (
+            <div className="mt-6 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center font-medium">
+              {error}
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex justify-between items-center mt-12 gap-4">
             {step > 1 ? (
-              <button 
+              <button
                 onClick={prevStep}
                 className="btn-secondary px-8"
               >
@@ -171,9 +255,9 @@ const OnboardingPage = () => {
             ) : (
               <div></div>
             )}
-            
+
             {step < 3 ? (
-              <button 
+              <button
                 onClick={nextStep}
                 className="btn-primary px-10"
               >
@@ -181,12 +265,22 @@ const OnboardingPage = () => {
                 <ArrowRight size={18} />
               </button>
             ) : (
-              <button 
+              <button
                 onClick={handleComplete}
-                className="btn-primary px-12 bg-green-600 hover:bg-green-700 shadow-green-500/25"
+                disabled={loading}
+                className="btn-primary px-12 bg-green-600 hover:bg-green-700 shadow-green-500/25 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Get Started
-                <Rocket size={18} />
+                {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Creating account…
+                  </>
+                ) : (
+                  <>
+                    Get Started
+                    <Rocket size={18} />
+                  </>
+                )}
               </button>
             )}
           </div>

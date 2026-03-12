@@ -1,13 +1,36 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
 
+const getFaviconUrl = (url) => {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  } catch {
+    return null;
+  }
+};
+
+const formatDeadline = (isoDate) => {
+  if (!isoDate) return 'No deadline';
+  return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 const OpportunityCard = ({ opportunity }) => {
-  const { title, company, deadline, eligibility, logo } = opportunity;
+  const { title, company, deadline, eligibility, logo, applicationLink } = opportunity;
+  const logoSrc = logo || getFaviconUrl(applicationLink);
+
+  const handleApply = () => {
+    if (applicationLink) window.open(applicationLink, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="bg-white border border-slate-200 rounded-[32px] p-7 shadow-sm hover:shadow-lg transition-all relative group flex items-start gap-6">
       <div className="w-14 h-14 bg-white border border-slate-100 rounded-2xl flex items-center justify-center p-2.5 shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-        <img src={logo || 'https://via.placeholder.com/150'} alt={company} className="w-full h-full object-contain" />
+        {logoSrc ? (
+          <img src={logoSrc} alt={company} className="w-full h-full object-contain" />
+        ) : (
+          <span className="text-xl font-bold text-slate-400">{company?.[0]?.toUpperCase() || '?'}</span>
+        )}
       </div>
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1">
@@ -16,15 +39,19 @@ const OpportunityCard = ({ opportunity }) => {
         </div>
         <div className="flex flex-col gap-1 text-[13px] font-semibold text-slate-500 mb-6">
           <p>Company: <span className="text-slate-800 ml-1 font-bold">{company}</span></p>
-          <p>Deadline: <span className="text-slate-800 ml-1 font-bold">{deadline}</span></p>
-          <p>Eligibility: <span className="text-slate-800 ml-1 font-bold">{eligibility}</span></p>
+          <p>Deadline: <span className="text-slate-800 ml-1 font-bold">{formatDeadline(deadline)}</span></p>
+          <p>Eligibility: <span className="text-slate-800 ml-1 font-bold">{eligibility || 'Open to all'}</span></p>
         </div>
         <div className="flex gap-3">
-          <button className="flex-1 py-3 bg-[#3B82F6] hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
+          <button className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-sm active:scale-[0.98] transition-all">
             View Details
           </button>
-          <button className="flex-1 py-3 bg-[#3B82F6] hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
-            Apply ›
+          <button
+            onClick={handleApply}
+            disabled={!applicationLink}
+            className="flex-1 py-3 bg-[#3B82F6] hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+          >
+            Apply <ExternalLink size={13} />
           </button>
         </div>
       </div>

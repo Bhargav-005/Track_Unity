@@ -20,34 +20,16 @@ import DeadlineTracker from '../components/DeadlineTracker'
 import RecommendationPanel from '../components/RecommendationPanel'
 import AdvancedStats from '../components/AdvancedStats'
 
-// Service
-import { opportunityApi } from '../services/opportunityApi'
+// Services
+import { getDashboard } from '../services/dashboardApi'
+import { getOpportunities, extractOpportunity, uploadPosterImage } from '../services/opportunityApi'
 
 const DashboardPage = () => {
   const [activeCategory, setActiveCategory] = useState('Internships')
   const [opportunities, setOpportunities] = useState([])
   const [stats, setStats] = useState(null)
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState([])
   const [loading, setLoading] = useState(true)
-
-  // Mock data for initial fill (will be replaced by API)
-  const mockOpportunities = [
-    {
-      title: 'Google Summer Internship',
-      company: 'Google',
-      deadline: 'March 30',
-      eligibility: '3rd Year',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_\"G\"_Logo.svg',
-      applicationLink: 'https://google.com/apply'
-    },
-    {
-      title: 'Microsoft AI Hackathon',
-      company: 'Microsoft',
-      deadline: 'April 2',
-      eligibility: 'All Years',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg',
-      applicationLink: 'https://microsoft.com/hackathon'
-    }
-  ]
 
   useEffect(() => {
     fetchDashboardData()
@@ -56,17 +38,16 @@ const DashboardPage = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      // Attempting to fetch from actual API (will fail if backend not running, so fallback to mock)
-      try {
-        const dashboardData = await opportunityApi.getDashboard()
-        setStats(dashboardData.stats)
-        const opps = await opportunityApi.getOpportunities(activeCategory.toLowerCase())
-        setOpportunities(opps)
-      } catch (e) {
-        console.log('API not available, using mock data')
-        setOpportunities(mockOpportunities)
-        setStats({ total: 124, upcoming: 8, applied: 12 })
-      }
+      const [dashboardRes, oppsRes] = await Promise.all([
+        getDashboard(),
+        getOpportunities(),
+      ])
+      const { totalOpportunities, upcomingDeadlines: upcoming } = dashboardRes.dashboard
+      setStats({ total: totalOpportunities, upcoming: upcoming.length, applied: 0 })
+      setUpcomingDeadlines(upcoming)
+      setOpportunities(oppsRes.opportunities || [])
+    } catch (e) {
+      console.error('Dashboard fetch error:', e)
     } finally {
       setLoading(false)
     }
@@ -75,24 +56,19 @@ const DashboardPage = () => {
   const handleExtractWithAI = async (message) => {
     if (!message) return
     try {
-      console.log('Extracting:', message)
-      const result = await opportunityApi.extractOpportunity(message)
-      // Here you would typically refresh the list or show the new item
-      alert('AI Extraction successful! (Simulated)')
-      console.log(result)
+      await extractOpportunity(message)
+      await fetchDashboardData()
     } catch (e) {
-      alert('AI Extraction failed. Please ensure the backend is running.')
+      console.error('Extraction failed:', e)
     }
   }
 
   const handleImageUpload = async (file) => {
     try {
-      console.log('Uploading image:', file.name)
-      const result = await opportunityApi.uploadImage(file)
-      alert('Image OCR processed! (Simulated)')
-      console.log(result)
+      await uploadPosterImage(file)
+      await fetchDashboardData()
     } catch (e) {
-      alert('Image upload failed. Please ensure the backend is running.')
+      console.error('Image upload failed:', e)
     }
   }
 
@@ -173,7 +149,7 @@ const DashboardPage = () => {
             transition={{ delay: 0.3 }}
           >
             <NotificationsPanel />
-            <DeadlineTracker />
+            <DeadlineTracker deadlines={upcomingDeadlines} />
             <AdvancedStats />
             <RecommendationPanel />
           </motion.div>

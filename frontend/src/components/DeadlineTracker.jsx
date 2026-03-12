@@ -2,12 +2,25 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { SlidersHorizontal } from 'lucide-react';
 
-const DeadlineTracker = () => {
-  const deadlines = [
-    { n: 'Google Internship', d: 2, p: 85, c: 'bg-orange-400' },
-    { n: 'HackMIT', d: 4, p: 60, c: 'bg-orange-300' },
-    { n: 'Amazon ML', d: 5, p: 35, c: 'bg-orange-200' },
-  ];
+const FALLBACK = [
+  { title: 'Google Internship', deadline: new Date(Date.now() + 2 * 864e5).toISOString() },
+  { title: 'HackMIT', deadline: new Date(Date.now() + 4 * 864e5).toISOString() },
+  { title: 'Amazon ML', deadline: new Date(Date.now() + 6 * 864e5).toISOString() },
+];
+
+const getDaysRemaining = (isoDate) => {
+  const diff = new Date(isoDate) - new Date();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+};
+
+const getBarColor = (days) => {
+  if (days <= 2) return 'bg-red-400';
+  if (days <= 5) return 'bg-orange-400';
+  return 'bg-green-400';
+};
+
+const DeadlineTracker = ({ deadlines }) => {
+  const items = (deadlines && deadlines.length > 0 ? deadlines : FALLBACK).slice(0, 5);
 
   return (
     <div className="bg-white border border-slate-200 rounded-[32px] p-7 shadow-sm mb-7">
@@ -16,27 +29,36 @@ const DeadlineTracker = () => {
         <button className="text-slate-400 hover:text-blue-500"><SlidersHorizontal size={18}/></button>
       </div>
       <div className="space-y-7">
-        {deadlines.map((item, i) => (
-          <div key={i} className="space-y-2.5">
-            <div className="flex justify-between items-center px-0.5">
-              <div className="flex items-center gap-2.5">
-                 <div className="w-5 h-5 bg-white border border-slate-100 rounded flex items-center justify-center p-0.5 overflow-hidden">
-                    <img src={`https://www.google.com/s2/favicons?domain=${item.n.split(' ')[0].toLowerCase()}.com`} alt="" className="w-3.5 h-3.5" />
-                 </div>
-                 <span className="text-[13px] font-bold text-slate-800 tracking-tight font-inter">{item.n}</span>
+        {items.map((item, i) => {
+          const days = getDaysRemaining(item.deadline);
+          const progress = Math.min(100, Math.round((7 - days) / 7 * 100));
+          const name = item.title || item.company || 'Opportunity';
+          return (
+            <div key={item._id || i} className="space-y-2.5">
+              <div className="flex justify-between items-center px-0.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 bg-white border border-slate-100 rounded flex items-center justify-center p-0.5 overflow-hidden">
+                    <img
+                      src={`https://www.google.com/s2/favicons?domain=${name.split(' ')[0].toLowerCase()}.com`}
+                      alt=""
+                      className="w-3.5 h-3.5"
+                    />
+                  </div>
+                  <span className="text-[13px] font-bold text-slate-800 tracking-tight font-inter">{name}</span>
+                </div>
+                <span className="text-[11px] font-bold text-slate-400 font-inter">{days} day{days !== 1 ? 's' : ''} remaining</span>
               </div>
-              <span className="text-[11px] font-bold text-slate-400 font-inter">{item.d} days remaining</span>
-            </div>
-            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-              <motion.div 
+              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <motion.div
                   initial={{ width: 0 }}
-                  whileInView={{ width: `${item.p}%` }}
+                  whileInView={{ width: `${progress}%` }}
                   transition={{ duration: 1, ease: 'easeOut' }}
-                  className={`h-full ${item.c} rounded-full`}
-              />
+                  className={`h-full ${getBarColor(days)} rounded-full`}
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

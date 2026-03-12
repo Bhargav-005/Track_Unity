@@ -1,38 +1,25 @@
-import axios from 'axios';
+import API from './api';
 
-const API_BASE_URL = 'http://localhost:5000/api'; // Adjust to your backend URL
+export const getOpportunities = async (params = {}) => {
+  const res = await API.get('/opportunities', { params });
+  return res.data;
+};
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+export const getOpportunityById = async (id) => {
+  const res = await API.get(`/opportunities/${id}`);
+  return res.data;
+};
 
-export const opportunityApi = {
-  getDashboard: async () => {
-    const response = await api.get('/dashboard');
-    return response.data;
-  },
+export const extractOpportunity = async (message) => {
+  const res = await API.post('/ingest/text', { message });
+  return res.data;
+};
 
-  getOpportunities: async (category = 'all') => {
-    const response = await api.get(`/opportunities?category=${category}`);
-    return response.data;
-  },
-
-  extractOpportunity: async (message) => {
-    const response = await api.post('/ingest/text', { message });
-    return response.data;
-  },
-
-  uploadImage: async (imageFile) => {
-    const formData = new FormData();
-    formData.append('image', imageFile);
-    const response = await api.post('/ingest/image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
+export const uploadPosterImage = async (file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+  const res = await API.post('/ingest/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
 };
