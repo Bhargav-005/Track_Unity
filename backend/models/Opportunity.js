@@ -23,6 +23,11 @@ const opportunitySchema = new mongoose.Schema(
       enum: ['valid', 'suspicious', 'broken'],
       default: 'broken',
     },
+    riskLevel: {
+      type: String,
+      enum: ['low', 'medium', 'high'],
+      default: 'low',
+    },
     confidenceScore: { type: Number, default: 0 },
     description: { type: String, trim: true },
     sourceMessageId: {

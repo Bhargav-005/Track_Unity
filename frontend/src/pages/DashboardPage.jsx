@@ -25,6 +25,7 @@ import AdvancedStats from '../components/AdvancedStats'
 // Services
 import { getDashboard } from '../services/dashboardApi'
 import { getOpportunities, extractOpportunity, uploadPosterImage } from '../services/opportunityApi'
+import { getRecommendations } from '../services/recommendationApi'
 
 const DashboardPage = () => {
   const navigate = useNavigate()
@@ -40,6 +41,7 @@ const DashboardPage = () => {
   const [stats, setStats] = useState(null)
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([])
   const [loading, setLoading] = useState(true)
+  const [recommendations, setRecommendations] = useState([])
 
   const filteredOpportunities = activeCategory === 'All'
     ? opportunities
@@ -59,14 +61,16 @@ const DashboardPage = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const [dashboardRes, oppsRes] = await Promise.all([
+      const [dashboardRes, oppsRes, recRes] = await Promise.all([
         getDashboard(),
         getOpportunities(),
+        getRecommendations(),
       ])
       const { totalOpportunities, upcomingDeadlines: upcoming } = dashboardRes.dashboard
       setStats({ total: totalOpportunities, upcoming: upcoming.length, applied: 0 })
       setUpcomingDeadlines(upcoming)
       setOpportunities(oppsRes.opportunities || [])
+      setRecommendations(recRes.data || [])
     } catch (e) {
       console.error('Dashboard fetch error:', e)
     } finally {
@@ -171,7 +175,7 @@ const DashboardPage = () => {
             <NotificationsPanel opportunities={opportunities} />
             <DeadlineTracker deadlines={upcomingDeadlines} />
             <AdvancedStats opportunities={opportunities} stats={stats} />
-            <RecommendationPanel />
+            <RecommendationPanel recommendations={recommendations} />
           </motion.div>
         </aside>
       </main>

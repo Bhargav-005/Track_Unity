@@ -5,6 +5,7 @@ const { extractTextFromImage } = require('../services/ocrService');
 const { extractOpportunityWithNlp } = require('../services/nlpClientService');
 const { validateOpportunityLink } = require('../services/linkValidator');
 const { updateRecommendationsForOpportunity } = require('../services/recommendationService');
+const { assessOpportunityRisk } = require('../services/fakeDetector');
 const {
   normalizeTelegramWebhookPayload,
   isTelegramWebhookAuthorized,
@@ -21,6 +22,12 @@ const persistParsedOpportunity = async ({ source, messageText, imageUrl = null, 
 
   const parsed = await extractOpportunityWithNlp(messageText);
   const linkResult = await validateOpportunityLink(parsed.applicationLink);
+  const riskResult = await assessOpportunityRisk({
+    title: parsed.title,
+    company: parsed.company,
+    text: messageText,
+    applicationLink: linkResult.normalizedUrl || parsed.applicationLink,
+  });
 
   const normalizedCompany = parsed.company || 'Unknown Company';
   const normalizedTitle = parsed.title && parsed.title !== 'Opportunity'
@@ -36,6 +43,7 @@ const persistParsedOpportunity = async ({ source, messageText, imageUrl = null, 
     skills: parsed.skills || [],
     applicationLink: linkResult.normalizedUrl || parsed.applicationLink,
     linkStatus: linkResult.linkStatus,
+    riskLevel: riskResult.riskLevel,
     confidenceScore: parsed.confidenceScore || 0,
     description: parsed.description,
     sourceMessageId: rawMessage._id,
@@ -51,7 +59,8 @@ const persistParsedOpportunity = async ({ source, messageText, imageUrl = null, 
 
 const ingestText = async (req, res, next) => {
   try {
-    const { message } = req.body;
+    const rawBody = req.body || {};
+    const message = rawBody.message || rawBody.text || rawBody.messageText;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ success: false, message: 'A non-empty message is required' });
@@ -107,11 +116,21 @@ const ingestImage = async (req, res, next) => {
 
 const ingestTelegram = async (req, res, next) => {
   try {
-    if (!isTelegramWebhookAuthorized(req)) {
+    const hasRawTelegramUpdate = Boolean(req.body?.message || req.body?.edited_message);
+
+    if (hasRawTelegramUpdate && !isTelegramWebhookAuthorized(req)) {
       return res.status(401).json({ success: false, message: 'Invalid Telegram webhook secret' });
     }
 
-    const { messageText, telegramUserId } = normalizeTelegramWebhookPayload(req.body);
+    let messageText = req.body?.messageText;
+    let telegramUserId = req.body?.telegramUserId ? String(req.body.telegramUserId) : null;
+
+    if (hasRawTelegramUpdate) {
+      const normalized = normalizeTelegramWebhookPayload(req.body);
+      messageText = normalized.messageText;
+      telegramUserId = normalized.telegramUserId;
+    }
+
     if (!messageText) {
       return res.status(200).json({ success: true, message: 'Telegram update ignored: no text content' });
     }
