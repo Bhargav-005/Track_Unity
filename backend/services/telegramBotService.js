@@ -1,4 +1,7 @@
 const axios = require('axios');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
 
 let botInstance = null;
@@ -82,25 +85,90 @@ const initializeTelegramBot = async () => {
   botInstance = new TelegramBot(token, { polling: true });
 
   botInstance.on('message', async (msg) => {
-    const text = msg?.text;
-    if (!text) {
+    const chatId = msg.chat?.id ? String(msg.chat.id) : null;
+    const telegramUserId = msg.from?.id;
+
+    // /start and /myid commands
+    if (msg.text === '/start' || msg.text === '/myid') {
+      const idMsg = `Your Telegram User ID is: <b>${telegramUserId}</b>`;
+      try {
+        await botInstance.sendMessage(chatId, idMsg, { parse_mode: 'HTML' });
+      } catch (_) {}
+      return;
+    }
+
+
+    // Plain text or caption on a photo
+    let messageText = msg.text || msg.caption || null;
+    let tempImagePath = null;
+
+    // Handle photo (array of resolutions) or image sent as a document
+    const hasPhoto = Array.isArray(msg.photo) && msg.photo.length > 0;
+    const hasImageDoc = msg.document?.mime_type?.startsWith('image/');
+
+    if (!messageText && (hasPhoto || hasImageDoc)) {
+      try {
+        // Pick the highest-resolution variant for photos
+        const fileId = hasPhoto
+          ? msg.photo[msg.photo.length - 1].file_id
+          : msg.document.file_id;
+
+        const fileLink = await botInstance.getFileLink(fileId);
+
+        // Download to a temp file
+        const tmpPath = path.join(os.tmpdir(), `tg-img-${Date.now()}.jpg`);
+        const dlResponse = await axios({ url: fileLink, method: 'GET', responseType: 'stream' });
+        await new Promise((resolve, reject) => {
+          const writer = fs.createWriteStream(tmpPath);
+          dlResponse.data.pipe(writer);
+          writer.on('finish', resolve);
+          writer.on('error', reject);
+        });
+        tempImagePath = tmpPath;
+
+        // Run OCR
+        const { extractTextFromImage } = require('./ocrService');
+        const ocrText = await extractTextFromImage(tmpPath);
+        if (ocrText && ocrText.trim()) {
+          messageText = ocrText.trim();
+        } else {
+          if (chatId) await botInstance.sendMessage(chatId, 'Could not extract text from that image. Please try a clearer photo or paste the text directly.').catch(() => {});
+          return;
+        }
+      } catch (error) {
+        console.error(`Telegram image OCR failed: ${error.message}`);
+        if (chatId) await botInstance.sendMessage(chatId, 'Failed to process image. Please paste the job posting as text instead.').catch(() => {});
+        return;
+      } finally {
+        if (tempImagePath && fs.existsSync(tempImagePath)) {
+          try { fs.unlinkSync(tempImagePath); } catch (_) { /* ignore */ }
+        }
+      }
+    }
+
+    if (!messageText) {
+      if (chatId) await botInstance.sendMessage(chatId, 'Please send a text message or a photo of a job posting.').catch(() => {});
       return;
     }
 
     try {
-      await axios.post(ingestionUrl, {
+      const response = await axios.post(ingestionUrl, {
         source: 'telegram',
-        messageText: text,
-        telegramUserId: msg.from?.id,
+        messageText,
+        telegramUserId,
+        telegramChatId: chatId,
       }, {
-        timeout: Number(process.env.TELEGRAM_FORWARD_TIMEOUT_MS) || 10000,
+        timeout: Number(process.env.TELEGRAM_FORWARD_TIMEOUT_MS) || 15000,
       });
 
-      if (msg.chat?.id) {
-        await botInstance.sendMessage(msg.chat.id, 'Opportunity received and added to your dashboard.');
-      }
+      const replyText = response.data?.duplicate
+        ? 'This opportunity is already saved in your dashboard!'
+        : 'Opportunity received and added to your dashboard!';
+
+      if (chatId) await botInstance.sendMessage(chatId, replyText).catch(() => {});
     } catch (error) {
       console.error(`Telegram forward failed: ${error.message}`);
+      if (chatId) await botInstance.sendMessage(chatId, 'Something went wrong while saving. Please try again.').catch(() => {});
     }
   });
 

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const User = require('../models/User');
 const Opportunity = require('../models/Opportunity');
 const RawMessage = require('../models/RawMessage');
 const UserProfile = require('../models/UserProfile');
@@ -14,15 +15,25 @@ const {
 } = require('../services/telegramBotService');
 
 const resolveUserIdFromTelegram = async (telegramUserId) => {
-  if (!telegramUserId) {
-    return null;
+  // 1. Try profile-linked lookup
+  if (telegramUserId) {
+    const profile = await UserProfile.findOne({ telegramUserId: String(telegramUserId) })
+      .select('userId')
+      .lean();
+    if (profile?.userId) return profile.userId;
   }
 
-  const profile = await UserProfile.findOne({ telegramUserId: String(telegramUserId) })
-    .select('userId')
-    .lean();
+  // 2. Zero-config fallback: if exactly one app user exists, route Telegram updates there.
+  const userCount = await User.countDocuments({});
+  if (userCount === 1) {
+    const onlyUser = await User.findOne({}).select('_id').lean();
+    return onlyUser?._id || null;
+  }
 
-  return profile?.userId || null;
+  // 3. Optional fallback for explicit override in environments with multiple users.
+  if (process.env.TELEGRAM_DEFAULT_USER_ID) return process.env.TELEGRAM_DEFAULT_USER_ID;
+
+  return null;
 };
 
 const persistParsedOpportunity = async ({
@@ -117,12 +128,20 @@ const persistParsedOpportunity = async ({
   rawMessage.processed = true;
   await rawMessage.save();
 
-  setImmediate(() => {
-    updateRecommendationsForOpportunity(opportunity, userId)
-      .catch((error) => {
-        console.error(`Recommendation update failed: ${error.message}`);
-      });
-  });
+  // Keep recommendation work strictly off the ingestion critical path.
+  // Also avoid global fan-out updates when userId is unavailable.
+  if (userId) {
+    setImmediate(() => {
+      try {
+        Promise.resolve(updateRecommendationsForOpportunity(opportunity, userId))
+          .catch((error) => {
+            console.error(`Recommendation update failed: ${error.message}`);
+          });
+      } catch (error) {
+        console.error(`Recommendation scheduling failed: ${error.message}`);
+      }
+    });
+  }
 
   return { rawMessage, parsed, opportunity };
 };

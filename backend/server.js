@@ -8,6 +8,7 @@ const errorHandler = require('./middleware/errorHandler');
 const { initializeTelegramBot } = require('./services/telegramBotService');
 const { startReminderCron } = require('./services/reminderService');
 const { startEmailPollingCron } = require('./services/emailParser');
+const { ingestTelegram } = require('./controllers/ingestionController');
 
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
@@ -42,6 +43,9 @@ app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/ingest', ingestionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+
+// Telegram webhook alias to match ngrok webhook URL configuration.
+app.post('/api/telegram/webhook', ingestTelegram);
 
 // Health check
 app.get('/', (req, res) => {
