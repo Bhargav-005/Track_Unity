@@ -133,8 +133,10 @@ const DashboardPage = () => {
   useEffect(() => {
     const loadDashboard = async () => {
       setLoading(true)
-      await Promise.all([fetchOpportunities(), fetchRecommendations()])
+      await fetchOpportunities()
       setLoading(false)
+      // Recommendations are non-critical — load independently so they don't block the dashboard
+      void fetchRecommendations()
     }
 
     void loadDashboard()

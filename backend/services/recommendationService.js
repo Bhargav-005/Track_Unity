@@ -86,14 +86,36 @@ const getUserRecommendations = async (userId, limit = 20) => {
     .lean();
 
   if (!recommendations.length) {
+    // No cached recommendations — compute on-the-fly if user has a profile.
+    // Return early if no profile exists to avoid an upsert loop with no results.
+    const profile = await UserProfile.findOne({ userId }).lean();
+    if (!profile) return [];
+
     const opportunities = await Opportunity.find({ userId })
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
-    await Promise.all(opportunities.map((opportunity) => upsertRecommendationForUser({ userId, opportunity })));
+    if (!opportunities.length) return [];
 
-    return getUserRecommendations(userId, limit);
+    const newRecs = await Promise.all(
+      opportunities.map((opportunity) => upsertRecommendationForUser({ userId, opportunity }))
+    );
+
+    // Return results from the freshly upserted records directly — no recursion.
+    return newRecs
+      .filter(Boolean)
+      .map((item) => {
+        const opp = opportunities.find((o) => String(o._id) === String(item.opportunityId));
+        return {
+          opportunityId: item.opportunityId,
+          title: opp?.title || '',
+          company: opp?.company || '',
+          matchScore: item.matchScore,
+          matchedSkills: item.matchedSkills || [],
+          missingSkills: item.missingSkills || [],
+        };
+      });
   }
 
   return recommendations
