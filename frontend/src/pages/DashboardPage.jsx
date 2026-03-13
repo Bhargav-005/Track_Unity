@@ -219,17 +219,19 @@ const DashboardPage = () => {
           </div>
       </nav>
 
+      <div className="max-w-[1440px] mx-auto px-8 pt-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <DashboardHeader />
+        </motion.div>
+      </div>
+
       {/* Main Content Area */}
-      <main className="max-w-[1440px] mx-auto p-8 lg:flex gap-8">
-        
+      <main className="max-w-[1440px] mx-auto px-8 pb-8 lg:flex gap-8">
         {/* Left Section (70%) */}
         <div className="flex-[0.7] space-y-8 min-w-0">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <DashboardHeader />
-          </motion.div>
 
           <StatsCards stats={stats} />
 

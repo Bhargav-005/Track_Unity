@@ -5,6 +5,119 @@ const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
 
 let botInstance = null;
+let retryTimer = null;
+let pollingConflictActive = false;
+const lockFilePath = path.join(__dirname, '..', '.telegram-bot.lock');
+
+const isProcessRunning = (pid) => {
+  if (!pid || Number.isNaN(Number(pid))) {
+    return false;
+  }
+
+  try {
+    process.kill(Number(pid), 0);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+const releaseBotLock = () => {
+  try {
+    if (!fs.existsSync(lockFilePath)) {
+      return;
+    }
+
+    const lockData = JSON.parse(fs.readFileSync(lockFilePath, 'utf8'));
+    if (Number(lockData?.pid) === process.pid) {
+      fs.unlinkSync(lockFilePath);
+    }
+  } catch (_) {
+    // ignore lock cleanup failures
+  }
+};
+
+const acquireBotLock = () => {
+  try {
+    if (fs.existsSync(lockFilePath)) {
+      const raw = fs.readFileSync(lockFilePath, 'utf8');
+      const existingLock = JSON.parse(raw || '{}');
+
+      if (Number(existingLock?.pid) === process.pid) {
+        return true;
+      }
+
+      if (isProcessRunning(existingLock?.pid)) {
+        console.log(`Telegram bot polling skipped: lock held by PID ${existingLock.pid}`);
+        return false;
+      }
+
+      fs.unlinkSync(lockFilePath);
+    }
+
+    fs.writeFileSync(lockFilePath, JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }), {
+      encoding: 'utf8',
+      flag: 'w',
+    });
+
+    return true;
+  } catch (error) {
+    console.error(`Telegram bot lock error: ${error.message}`);
+    return false;
+  }
+};
+
+const cleanupTelegramBot = async () => {
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+
+  const activeBot = botInstance;
+  botInstance = null;
+  pollingConflictActive = false;
+
+  if (activeBot) {
+    try {
+      await activeBot.stopPolling();
+    } catch (_) {
+      // ignore polling shutdown failures
+    }
+  }
+
+  releaseBotLock();
+};
+
+const schedulePollingRetry = () => {
+  if (retryTimer) {
+    return;
+  }
+
+  retryTimer = setTimeout(async () => {
+    retryTimer = null;
+    await initializeTelegramBot();
+  }, 15000);
+};
+
+let shutdownHooksRegistered = false;
+
+const registerShutdownHooks = () => {
+  if (shutdownHooksRegistered) {
+    return;
+  }
+
+  shutdownHooksRegistered = true;
+
+  const stopBot = () => {
+    void cleanupTelegramBot();
+  };
+
+  process.once('SIGINT', stopBot);
+  process.once('SIGTERM', stopBot);
+  process.once('exit', () => {
+    releaseBotLock();
+  });
+};
 
 const telegramApiRequest = async (token, method, payload = {}) => axios.post(
   `https://api.telegram.org/bot${token}/${method}`,
@@ -59,6 +172,8 @@ const initializeTelegramBot = async () => {
     return;
   }
 
+  registerShutdownHooks();
+
   const ingestionUrl = process.env.TELEGRAM_INGEST_URL || 'http://localhost:5000/api/ingest/telegram';
 
   if (TELEGRAM_WEBHOOK_URL) {
@@ -80,6 +195,10 @@ const initializeTelegramBot = async () => {
     await telegramApiRequest(token, 'deleteWebhook', { drop_pending_updates: false });
   } catch (error) {
     console.error(`Telegram webhook cleanup failed: ${error.message}`);
+  }
+
+  if (!acquireBotLock()) {
+    return;
   }
 
   botInstance = new TelegramBot(token, { polling: true });
@@ -173,9 +292,22 @@ const initializeTelegramBot = async () => {
   });
 
   botInstance.on('polling_error', (error) => {
+    if (String(error?.message || '').includes('409 Conflict')) {
+      if (!pollingConflictActive) {
+        pollingConflictActive = true;
+        console.error('Telegram polling conflict detected. Another getUpdates consumer is active. Retrying in 15 seconds.');
+      }
+
+      void cleanupTelegramBot().finally(() => {
+        schedulePollingRetry();
+      });
+      return;
+    }
+
     console.error(`Telegram polling error: ${error.message}`);
   });
 
+  pollingConflictActive = false;
   console.log('Telegram bot polling started');
 };
 
