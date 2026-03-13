@@ -2,6 +2,8 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Send, Bell, ListTodo } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { DisplayCardsDemo } from './ui/display-cards-demo'
+
 
 const HeroSection = () => {
   return (
@@ -53,80 +55,9 @@ const HeroSection = () => {
           {/* Decorative Ring */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-white/5 rounded-full animate-spin-slow"></div>
           
-          {/* Floating Cards */}
-          <div className="relative w-full max-w-[400px]">
-            {/* Card 1 */}
-            <motion.div 
-              animate={{ y: [-10, 10, -10] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -top-20 -left-10 z-20 glass p-6 rounded-2xl w-64 shadow-2xl border border-white/10"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">
-                  <Send size={20} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm">Message Received</h4>
-                  <p className="text-xs text-gray-400">telegrambot.io</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-300 italic mb-3">"We are hiring Frontend Interns! Apply at bit.ly/hire-me..."</p>
-              <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="h-full bg-blue-500"
-                ></motion.div>
-              </div>
-            </motion.div>
-
-            {/* Card 2 */}
-            <motion.div 
-              animate={{ y: [10, -10, 10] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="relative z-10 glass p-6 rounded-2xl shadow-2xl border border-white/10 bg-white/10"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-bold text-lg font-outfit">Opportunity Parsed</h4>
-                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
-                  <Sparkles size={16} />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400">Role:</span>
-                  <span className="text-white font-medium">Frontend Developer</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400">Company:</span>
-                  <span className="text-white font-medium">TechNova Inc.</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400">Deadline:</span>
-                  <span className="text-red-400 font-medium">Oct 24, 2026</span>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Card 3 */}
-            <motion.div 
-              animate={{ y: [-15, 15, -15] }}
-              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -bottom-20 -right-10 z-20 glass p-5 rounded-2xl w-56 shadow-2xl border border-white/10"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">
-                  <Bell size={20} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm">Deadline Alert</h4>
-                  <p className="text-xs text-red-400 font-medium">2 days left</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
+          <DisplayCardsDemo />
         </motion.div>
+
       </div>
     </section>
   )
